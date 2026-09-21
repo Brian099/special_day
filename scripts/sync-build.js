@@ -30,6 +30,16 @@ const backendDist = path.join(rootDir, 'backend/dist');
 const targetUi = path.join(rootDir, 'app/ui');
 const targetBackend = path.join(rootDir, 'app/backend');
 
+console.log('Syncing fonts...');
+const rootFonts = path.join(rootDir, 'fonts');
+const publicFonts = path.join(rootDir, 'frontend/public/fonts');
+const uiFonts = path.join(targetUi, 'fonts');
+
+if (fs.existsSync(rootFonts)) {
+  copyDirRecursive(rootFonts, publicFonts);
+  copyDirRecursive(rootFonts, uiFonts);
+}
+
 console.log('Syncing frontend build to app/ui...');
 if (fs.existsSync(frontendDist)) {
   const assetsDir = path.join(targetUi, 'assets');

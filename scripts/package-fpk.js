@@ -47,10 +47,14 @@ if (fs.existsSync(path.join(rootDir, 'ICON_256.PNG'))) {
   fs.copyFileSync(path.join(rootDir, 'ICON_256.PNG'), path.join(stagingDir, 'ICON_256.PNG'));
 }
 
-// Copy cmd, config, and app
+// Copy cmd, config, app, and fonts
 copyDirRecursive(path.join(rootDir, 'cmd'), path.join(stagingDir, 'cmd'));
 copyDirRecursive(path.join(rootDir, 'config'), path.join(stagingDir, 'config'));
 copyDirRecursive(path.join(rootDir, 'app'), path.join(stagingDir, 'app'));
+if (fs.existsSync(path.join(rootDir, 'fonts'))) {
+  copyDirRecursive(path.join(rootDir, 'fonts'), path.join(stagingDir, 'fonts'));
+  copyDirRecursive(path.join(rootDir, 'fonts'), path.join(stagingDir, 'app/ui/fonts'));
+}
 
 console.log('🔨 Executing fnpack build...');
 const fnpackExe = path.join(rootDir, 'fnpack.exe');
