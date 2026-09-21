@@ -1,0 +1,10 @@
+{
+  "defaults": {
+    "run-as": "package"
+  },
+  "username": "anniversary",
+  "groupname": "anniversary",
+  "api-scope": [
+    "trim.system.getPlatformConfig"
+  ]
+}

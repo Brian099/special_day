@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build artifacts
+dist/
+staging/
+frontend/dist/
+backend/dist/
+app/backend/node_modules/
+*.fpk
+
+# Local databases & logs
+.env
+*.env.local
+data.db
+data.db-journal
+data.db-shm
+data.db-wal
+*.log
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

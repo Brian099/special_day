@@ -1,0 +1,5 @@
+#!/bin/bash
+DATA_DIR="${TRIM_PKGVAR:-/var/apps/anniversary-reminder/var}"
+CONF_DIR="${TRIM_PKGETC:-/var/apps/anniversary-reminder/etc}"
+mkdir -p "$DATA_DIR" "$CONF_DIR"
+exit 0

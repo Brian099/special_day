@@ -1,0 +1,14 @@
+appname = anniversary-reminder
+version = 1.0.0
+display_name = 纪念日与节日提醒
+desc = 精致优雅的重要节日、生日、结婚纪念日、周期日程（经期、升旗等）倒计时与智能循环提醒应用，支持公历与农历双向计算，支持飞牛账号无缝关联与独立多用户隔离。
+source = thirdparty
+platform = all
+maintainer = Developer
+maintainer_url = https://github.com
+desktop_uidir = ui
+desktop_applaunchname = anniversary-reminder.Application
+service_port = 6921
+checkport = true
+install_dep_apps = nodejs_v22
+changelog = 1.0.0 初始版本发布：支持公历/农历双引擎、多周期循环推算、多用户隔离与飞牛账号免密关联。

@@ -1,0 +1,118 @@
+#!/bin/bash
+ACTION=$1
+
+APP_DIR="${TRIM_APPDEST:-/var/apps/anniversary-reminder/target}"
+DATA_DIR="${TRIM_PKGVAR:-/var/apps/anniversary-reminder/var}"
+CONF_DIR="${TRIM_PKGETC:-/var/apps/anniversary-reminder/etc}"
+PID_FILE="${DATA_DIR}/app.pid"
+LOG_FILE="${DATA_DIR}/app.log"
+SOCK_FILE="${APP_DIR}/app.sock"
+
+# Enhance PATH for fnOS dependency apps (e.g. nodejs_v22)
+export PATH="/var/apps/nodejs_v22/target/bin:/var/apps/nodejs_v22/bin:/var/apps/nodejs/target/bin:/var/apps/nodejs/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+# Locate node executable
+NODE_BIN=""
+for p in \
+    "/var/apps/nodejs_v22/target/bin/node" \
+    "/var/apps/nodejs_v22/bin/node" \
+    "/var/apps/nodejs/target/bin/node" \
+    "/var/apps/nodejs/bin/node" \
+    "/usr/local/bin/node" \
+    "/usr/bin/node" \
+    "/bin/node"; do
+    if [ -x "$p" ]; then
+        NODE_BIN="$p"
+        break
+    fi
+done
+
+if [ -z "$NODE_BIN" ]; then
+    WHICH_NODE=$(which node 2>/dev/null)
+    if [ -x "$WHICH_NODE" ]; then
+        NODE_BIN="$WHICH_NODE"
+    else
+        NODE_BIN="node"
+    fi
+fi
+
+mkdir -p "$DATA_DIR" "$CONF_DIR"
+
+start() {
+    if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+        echo "Anniversary Reminder is already running."
+        exit 0
+    fi
+
+    # Remove stale socket file if exists
+    rm -f "$SOCK_FILE"
+
+    # Start Node.js backend
+    export NODE_ENV=production
+    export DATABASE_PATH="${DATA_DIR}/data.db"
+    export UNIX_SOCKET="$SOCK_FILE"
+    export PORT="${TRIM_SERVICE_PORT:-6921}"
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Using Node binary: $NODE_BIN" >> "$LOG_FILE"
+
+    nohup "$NODE_BIN" "${APP_DIR}/backend/server.js" >> "$LOG_FILE" 2>&1 &
+    PID=$!
+    echo "$PID" > "$PID_FILE"
+
+    # Wait for socket creation and ensure permissions
+    for i in {1..30}; do
+        if [ -S "$SOCK_FILE" ]; then
+            chmod 0777 "$SOCK_FILE"
+            break
+        fi
+        sleep 0.2
+    done
+
+    echo "Anniversary Reminder started with PID $PID."
+}
+
+stop() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        echo "Stopping Anniversary Reminder (PID $PID)..."
+        kill "$PID" 2>/dev/null
+        for i in {1..20}; do
+            if ! kill -0 "$PID" 2>/dev/null; then
+                break
+            fi
+            sleep 0.2
+        done
+        rm -f "$PID_FILE"
+        rm -f "$SOCK_FILE"
+        echo "Stopped."
+    fi
+}
+
+status() {
+    if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+        echo "Running"
+        exit 0
+    else
+        echo "Stopped"
+        exit 1
+    fi
+}
+
+case "$ACTION" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    log)
+        echo "$LOG_FILE"
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|log}"
+        exit 1
+        ;;
+esac

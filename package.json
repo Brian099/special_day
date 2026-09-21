@@ -1,0 +1,18 @@
+{
+  "name": "fnos-anniversary-reminder",
+  "version": "1.0.0",
+  "description": "飞牛 fnOS 重要节日与纪念日周期提醒应用",
+  "main": "app/backend/server.js",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build": "npm run build:frontend && npm run build:backend && node scripts/sync-build.js",
+    "package": "npm run build && node scripts/package-fpk.js",
+    "start": "node app/backend/server.js"
+  },
+  "keywords": ["fnos", "anniversary", "countdown", "lunar", "reminder"],
+  "author": "Developer",
+  "license": "MIT"
+}
