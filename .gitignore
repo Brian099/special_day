@@ -8,7 +8,6 @@ staging/
 frontend/dist/
 backend/dist/
 app/backend/node_modules/
-*.fpk
 
 # Local databases & logs
 .env
