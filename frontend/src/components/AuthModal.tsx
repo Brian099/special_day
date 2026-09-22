@@ -37,7 +37,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || '操作失败');
+      setError(err.response?.data?.message || err.message || '操作失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -52,10 +52,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           width: '100%'
         }}
       >
+        {/* Header */}
         <div className="modal-header">
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {isRegister ? '注册独立账户' : '登录独立账户'}
-          </h2>
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {isRegister ? '创建新账户' : '登录账户'}
+            </h2>
+            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              {isRegister ? '注册专属账户以管理您的纪念日与节日' : '输入用户名和密码登录'}
+            </p>
+          </div>
           <button 
             onClick={onClose} 
             className="btn-icon-box"
@@ -65,6 +71,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
+        {/* Body */}
         <div className="modal-body">
           {error && (
             <div style={{
@@ -73,7 +80,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               background: '#FEF2F2',
               color: '#C53030',
               fontSize: '13px',
-              marginBottom: '14px'
+              marginBottom: '14px',
+              border: '1px solid rgba(197, 48, 48, 0.2)'
             }}>
               {error}
             </div>
@@ -89,7 +97,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="请输入用户名"
+                  placeholder="请输入用户名（至少2位）"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   style={{
@@ -115,7 +123,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <input
                   type="password"
                   required
-                  placeholder="请输入密码"
+                  placeholder="请输入密码（至少4位）"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
@@ -144,13 +152,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 opacity: loading ? 0.7 : 1
               }}
             >
-              {loading ? '处理中...' : isRegister ? '立即注册' : '登录'}
+              {loading ? '处理中...' : isRegister ? '立即注册并登录' : '登录'}
             </button>
 
             <div style={{ textAlign: 'center', marginTop: '6px' }}>
               <button
                 type="button"
-                onClick={() => setIsRegister(!isRegister)}
+                onClick={() => {
+                  setIsRegister(!isRegister);
+                  setError('');
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -160,7 +171,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   cursor: 'pointer'
                 }}
               >
-                {isRegister ? '已有账户？返回登录' : '没有账户？创建新独立账户'}
+                {isRegister ? '已有账户？返回登录' : '没有账户？创建新账户'}
               </button>
             </div>
           </form>
@@ -169,4 +180,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     </div>
   );
 };
+
+
 

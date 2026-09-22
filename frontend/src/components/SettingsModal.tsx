@@ -4,7 +4,6 @@ import {
   Send, 
   Plus, 
   Trash2, 
-  ShieldCheck, 
   LogOut, 
   CheckCircle, 
   AlertCircle 
@@ -354,7 +353,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   width: '46px',
                   height: '46px',
                   borderRadius: '50%',
-                  background: user.isFnOSUser ? 'var(--primary)' : 'var(--gold)',
+                  background: 'var(--primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -363,49 +362,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   fontSize: '18px',
                   fontWeight: 600
                 }}>
-                  {user.isFnOSUser ? <ShieldCheck size={24} /> : user.username[0]?.toUpperCase()}
+                  {user.username[0]?.toUpperCase() || 'U'}
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-serif)', fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {user.username}
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    {user.isFnOSUser ? `飞牛 fnOS 账号自动绑定` : '独立多租户应用账户'}
+                    {user.role === 'admin' ? '系统管理员' : '普通用户'}
                   </div>
                 </div>
               </div>
 
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                🛡️ <strong>多用户隔离保障</strong>：所有提醒事件、分类标签和 Webhook 配置均绑定在当前用户专属空间，数据完全物理隔离。
+                🛡️ <strong>多用户隔离保障</strong>：所有提醒事件、分类标签和 Webhook 配置均绑定在当前用户专属空间，数据完全独立私有。
               </p>
 
-              {!user.isFnOSUser && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onLogout();
-                    onClose();
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '10px 20px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid #C53030',
-                    background: '#FEF2F2',
-                    color: '#C53030',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginTop: '10px'
-                  }}
-                >
-                  <LogOut size={16} />
-                  退出当前独立账户
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  onLogout();
+                  onClose();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '10px 20px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid #C53030',
+                  background: '#FEF2F2',
+                  color: '#C53030',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginTop: '10px'
+                }}
+              >
+                <LogOut size={16} />
+                <span>退出登录 / 切换账号</span>
+              </button>
             </div>
           )}
         </div>

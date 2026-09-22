@@ -5,8 +5,7 @@ import {
   Moon, 
   Settings, 
   Search, 
-  User as UserIcon,
-  ShieldCheck
+  User as UserIcon
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -19,7 +18,6 @@ interface HeaderProps {
   onOpenAuth: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  isFnOSGateway?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -160,35 +158,41 @@ export const Header: React.FC<HeaderProps> = ({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer'
+              gap: '10px',
+              cursor: 'pointer',
+              background: 'var(--bg-subtle)',
+              padding: '4px 12px 4px 6px',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--border-light)',
+              transition: 'all 0.2s ease'
             }}
             title="点击打开设置与多用户管理"
           >
             <div style={{
-              width: '38px',
-              height: '38px',
+              width: '32px',
+              height: '32px',
               borderRadius: '50%',
-              background: user.isFnOSUser ? 'var(--primary)' : 'var(--gold)',
+              background: 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#fff',
               fontFamily: 'var(--font-serif)',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 600,
-              boxShadow: '0 3px 10px rgba(201, 169, 110, 0.25)'
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)'
             }}>
-              {user.isFnOSUser ? <ShieldCheck size={18} /> : user.username[0]?.toUpperCase()}
+              {user.username[0]?.toUpperCase() || 'U'}
             </div>
-            <button
-              type="button"
-              className="btn-icon-box"
-              title="设置"
-              style={{ width: '38px', height: '38px' }}
-            >
-              <Settings size={18} />
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {user.username}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                {user.role === 'admin' ? '管理员' : '普通用户'}
+              </span>
+            </div>
+            <Settings size={15} style={{ color: 'var(--text-tertiary)', marginLeft: '4px' }} />
           </div>
         ) : (
           <button
@@ -200,8 +204,10 @@ export const Header: React.FC<HeaderProps> = ({
             <span>登录 / 注册</span>
           </button>
         )}
+
       </div>
     </header>
+
   );
 };
 

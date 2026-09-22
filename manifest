@@ -1,11 +1,13 @@
 appname = anniversary-reminder
 version = 1.0.0
 display_name = 纪念日与节日提醒
-desc = 精致优雅的重要节日、生日、结婚纪念日、周期日程（经期、升旗等）倒计时与智能循环提醒应用，支持公历与农历双向计算，支持飞牛账号无缝关联与独立多用户隔离。
+desc = 精致优雅的重要节日、生日、结婚纪念日、周期日程倒计时与智能循环提醒应用，支持公历与农历双向计算，支持飞牛账号无缝关联与独立多用户隔离。
 source = thirdparty
 platform = all
-maintainer = Developer
-maintainer_url = https://github.com
+maintainer = Giraff
+maintainer_url = https://giraff.fun
+distributor = Giraff
+distributor_url = https://giraff.fun
 desktop_uidir = ui
 desktop_applaunchname = anniversary-reminder.Application
 service_port = 6921

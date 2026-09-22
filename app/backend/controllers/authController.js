@@ -9,7 +9,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const db_1 = require("../db");
 const auth_1 = require("../middlewares/auth");
 exports.authController = {
-    // Get current user info & login mode
+    // Get current user info
     getCurrentUser(req, res) {
         const user = req.user;
         const settings = db_1.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(user.id) || {};
@@ -19,12 +19,9 @@ exports.authController = {
                 user: {
                     id: user.id,
                     username: user.username,
-                    role: user.role,
-                    isFnOSUser: Boolean(user.fn_uid),
-                    fnUid: user.fn_uid
+                    role: user.role
                 },
-                settings,
-                isFnOSGateway: Boolean(req.isFnOSGateway)
+                settings
             }
         });
     },
@@ -77,7 +74,6 @@ exports.authController = {
         }
         const authUser = {
             id: user.id,
-            fn_uid: user.fn_uid,
             username: user.username,
             role: user.role
         };

@@ -16,7 +16,7 @@ api.interceptors.request.use((config) => {
 
 export const apiClient = {
   // Auth
-  async getCurrentUser(): Promise<{ user: User; settings: UserSettings; isFnOSGateway: boolean }> {
+  async getCurrentUser(): Promise<{ user: User; settings: UserSettings }> {
     const res = await api.get('/auth/me');
     return res.data.data;
   },

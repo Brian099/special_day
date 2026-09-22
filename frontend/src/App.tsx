@@ -13,7 +13,6 @@ import { Sparkles } from 'lucide-react';
 export const App: React.FC = () => {
   // State
   const [user, setUser] = useState<User | null>(null);
-  const [isFnOSGateway, setIsFnOSGateway] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
@@ -67,7 +66,6 @@ export const App: React.FC = () => {
     try {
       const res = await apiClient.getCurrentUser();
       setUser(res.user);
-      setIsFnOSGateway(res.isFnOSGateway);
       return res.user;
     } catch {
       setUser(null);
@@ -168,6 +166,10 @@ export const App: React.FC = () => {
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenAddModal={() => {
+          if (!user) {
+            setIsAuthOpen(true);
+            return;
+          }
           setEditingEvent(null);
           setIsAddModalOpen(true);
         }}
@@ -175,47 +177,100 @@ export const App: React.FC = () => {
         onOpenAuth={() => setIsAuthOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        isFnOSGateway={isFnOSGateway}
       />
 
       {/* 24 Solar Terms Atmospheric Dynamic Banner & Traditional Color Scheme */}
       <SolarTermBanner solarTerm={solarTerm} />
 
-      {/* Top Dashboard 3-Cards Row (倒计时, 重要提醒, 最近提醒) - Hidden when searching */}
-      {!searchQuery.trim() && (
-        <TopDashboardCards
-          events={allEvents}
-          onEdit={handleEdit}
-          onTogglePin={handleTogglePin}
-          onOpenAddModal={() => {
-            setEditingEvent(null);
-            setIsAddModalOpen(true);
-          }}
-        />
-      )}
-
-      {/* Timeline View of All Records - Based on timelineEvents (Filtered) */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
-          <Sparkles size={28} style={{ margin: '0 auto 12px', color: 'var(--primary)' }} />
-          <p style={{ fontSize: '0.9rem', fontFamily: 'var(--font-serif)' }}>正在加载纪念日列表...</p>
+      {!user && !loading ? (
+        /* Unauthenticated Guest State Card */
+        <div className="card-box" style={{
+          padding: '48px 32px',
+          textAlign: 'center',
+          maxWidth: '640px',
+          margin: '24px auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'var(--bg-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--primary)',
+            fontSize: '24px'
+          }}>
+            🗓️
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            欢迎使用 纪念日与节日提醒
+          </h2>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '440px', lineHeight: 1.6 }}>
+            支持公历/农历双引擎、二十四节气物候、智能倒计时与周期提醒。请登录或注册账户开始记录每一个值得铭记的日子。
+          </p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setIsAuthOpen(true)}
+              className="btn-primary-solid"
+              style={{ height: '42px', padding: '0 24px', borderRadius: 'var(--radius-md)' }}
+            >
+              登录 / 注册新账户
+            </button>
+          </div>
         </div>
       ) : (
-        <TimelineView
-          events={timelineEvents}
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          selectedRepeatType={selectedRepeatType}
-          onSelectRepeatType={setSelectedRepeatType}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onTogglePin={handleTogglePin}
-          onOpenAddModal={() => {
-            setEditingEvent(null);
-            setIsAddModalOpen(true);
-          }}
-        />
+        <>
+          {/* Top Dashboard 3-Cards Row (倒计时, 重要提醒, 最近提醒) - Hidden when searching */}
+          {!searchQuery.trim() && (
+            <TopDashboardCards
+              events={allEvents}
+              onEdit={handleEdit}
+              onTogglePin={handleTogglePin}
+              onOpenAddModal={() => {
+                if (!user) {
+                  setIsAuthOpen(true);
+                  return;
+                }
+                setEditingEvent(null);
+                setIsAddModalOpen(true);
+              }}
+            />
+          )}
+
+          {/* Timeline View of All Records - Based on timelineEvents (Filtered) */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+              <Sparkles size={28} style={{ margin: '0 auto 12px', color: 'var(--primary)' }} />
+              <p style={{ fontSize: '0.9rem', fontFamily: 'var(--font-serif)' }}>正在加载纪念日列表...</p>
+            </div>
+          ) : (
+            <TimelineView
+              events={timelineEvents}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              selectedRepeatType={selectedRepeatType}
+              onSelectRepeatType={setSelectedRepeatType}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onTogglePin={handleTogglePin}
+              onOpenAddModal={() => {
+                if (!user) {
+                  setIsAuthOpen(true);
+                  return;
+                }
+                setEditingEvent(null);
+                setIsAddModalOpen(true);
+              }}
+            />
+          )}
+        </>
       )}
 
       {/* Modals */}

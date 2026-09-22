@@ -5,7 +5,7 @@ import { db } from '../db';
 import { generateToken, createDefaultCategories } from '../middlewares/auth';
 
 export const authController = {
-  // Get current user info & login mode
+  // Get current user info
   getCurrentUser(req: Request, res: Response): void {
     const user = req.user!;
     const settings = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(user.id) || {};
@@ -16,12 +16,9 @@ export const authController = {
         user: {
           id: user.id,
           username: user.username,
-          role: user.role,
-          isFnOSUser: Boolean(user.fn_uid),
-          fnUid: user.fn_uid
+          role: user.role
         },
-        settings,
-        isFnOSGateway: Boolean(req.isFnOSGateway)
+        settings
       }
     });
   },
@@ -87,7 +84,6 @@ export const authController = {
 
     const authUser = {
       id: user.id,
-      fn_uid: user.fn_uid,
       username: user.username,
       role: user.role
     };
@@ -104,3 +100,5 @@ export const authController = {
     });
   }
 };
+
+

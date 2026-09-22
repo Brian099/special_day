@@ -31,39 +31,13 @@ function createDefaultCategories(userId) {
   `).run(userId);
 }
 function authMiddleware(req, res, next) {
-    // 1. Check fnOS Unified Gateway headers
-    const fnUid = req.headers['x-trim-user-id'];
-    const fnUsername = req.headers['x-trim-username'] || 'fnos_user';
-    const fnIsAdmin = req.headers['x-trim-is-admin'] === 'true';
-    if (fnUid) {
-        req.isFnOSGateway = true;
-        let user = db_1.db.prepare('SELECT * FROM users WHERE fn_uid = ?').get(fnUid);
-        if (!user) {
-            // Auto-create user linked with fnOS account
-            const userId = `fn_${fnUid}`;
-            const role = fnIsAdmin ? 'admin' : 'user';
-            db_1.db.prepare(`
-        INSERT INTO users (id, fn_uid, username, role)
-        VALUES (?, ?, ?, ?)
-      `).run(userId, fnUid, fnUsername, role);
-            createDefaultCategories(userId);
-            user = { id: userId, fn_uid: fnUid, username: fnUsername, role };
-        }
-        req.user = {
-            id: user.id,
-            fn_uid: user.fn_uid,
-            username: user.username,
-            role: user.role
-        };
-        return next();
-    }
-    // 2. Check Bearer Token (Independent login mode)
+    // Check Bearer Token (Independent user authentication)
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         try {
             const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
-            const user = db_1.db.prepare('SELECT id, fn_uid, username, role FROM users WHERE id = ?').get(decoded.id);
+            const user = db_1.db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(decoded.id);
             if (user) {
                 req.user = user;
                 return next();
@@ -73,21 +47,6 @@ function authMiddleware(req, res, next) {
             res.status(401).json({ success: false, message: '无效或已过期的登录令牌' });
             return;
         }
-    }
-    // 3. Fallback for standalone dev / test default user when enabled
-    if (process.env.NODE_ENV !== 'production' && !authHeader) {
-        const devUserId = 'dev_user_default';
-        let user = db_1.db.prepare('SELECT id, fn_uid, username, role FROM users WHERE id = ?').get(devUserId);
-        if (!user) {
-            db_1.db.prepare(`
-        INSERT OR IGNORE INTO users (id, username, role)
-        VALUES (?, '开发者测试用户', 'admin')
-      `).run(devUserId);
-            createDefaultCategories(devUserId);
-            user = { id: devUserId, username: '开发者测试用户', role: 'admin' };
-        }
-        req.user = user;
-        return next();
     }
     res.status(401).json({ success: false, message: '请先登录' });
 }
