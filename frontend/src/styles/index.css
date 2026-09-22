@@ -90,6 +90,8 @@ button, input, select, textarea {
 
 /* 页面主容器 */
 .app-layout {
+  position: relative;
+  z-index: 1;
   max-width: 1240px;
   margin: 0 auto;
   display: flex;

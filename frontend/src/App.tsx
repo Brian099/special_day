@@ -6,6 +6,7 @@ import { TimelineView } from './components/TimelineView';
 import { EventFormModal } from './components/EventFormModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
+import { FallingLeavesTreeCanvas } from './components/FallingLeavesTreeCanvas';
 import { EventItem, Category, User, SolarTermInfo } from './types';
 import { apiClient } from './api/client';
 import { Sparkles } from 'lucide-react';
@@ -159,8 +160,12 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="app-layout">
-      {/* Top Header */}
+    <>
+      {/* 极简新中式意境：右侧大树与向左下角零星飘落之落叶 */}
+      <FallingLeavesTreeCanvas theme={theme} />
+
+      <div className="app-layout">
+        {/* Top Header */}
       <Header
         user={user}
         theme={theme}
@@ -307,7 +312,8 @@ export const App: React.FC = () => {
           loadEvents();
         }}
       />
-    </div>
+      </div>
+    </>
   );
 };
 
