@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Send, 
@@ -6,7 +6,11 @@ import {
   Trash2, 
   LogOut, 
   CheckCircle, 
-  AlertCircle 
+  AlertCircle,
+  Download,
+  Upload,
+  FileJson,
+  RefreshCw
 } from 'lucide-react';
 import { User, Category } from '../types';
 import { apiClient } from '../api/client';
@@ -18,6 +22,7 @@ interface SettingsModalProps {
   onLogout: () => void;
   categories: Category[];
   onRefreshCategories: () => void;
+  onRefreshEvents?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -26,9 +31,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   user,
   onLogout,
   categories,
-  onRefreshCategories
+  onRefreshCategories,
+  onRefreshEvents
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'webhook' | 'category'>('webhook');
+  const [activeTab, setActiveTab] = useState<'webhook' | 'category' | 'data' | 'profile'>('webhook');
 
   // Webhook form
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -40,6 +46,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState('#8B5E5E');
 
+  // Data Import / Export state
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [parsedData, setParsedData] = useState<any | null>(null);
+  const [dataMessage, setDataMessage] = useState<{ success?: boolean; message?: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
     apiClient.getSettings().then(res => {
@@ -47,6 +62,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setWebhookType(res.webhook_type || 'generic');
     });
     setTestResult(null);
+    setDataMessage(null);
+    setSelectedFile(null);
+    setParsedData(null);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -105,18 +123,152 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  // Export JSON file
+  const handleExportData = async () => {
+    try {
+      setExporting(true);
+      setDataMessage(null);
+      const res = await apiClient.exportData();
+
+      // Trigger browser file download
+      const jsonStr = JSON.stringify(res, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const fileName = `纪念日提醒_备份_${user?.username || 'user'}_${dateStr}.json`;
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setDataMessage({
+        success: true,
+        message: `导出成功！已下载文件 ${fileName}（包含 ${res.summary?.events_count ?? 0} 个纪念日、${res.summary?.categories_count ?? 0} 个分类）`
+      });
+    } catch (err: any) {
+      console.error('Export error:', err);
+      setDataMessage({
+        success: false,
+        message: '数据导出失败: ' + (err.response?.data?.message || err.message || '网络错误')
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Handle JSON file selection and preview
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDataMessage(null);
+    const file = e.target.files?.[0];
+    if (!file) {
+      setSelectedFile(null);
+      setParsedData(null);
+      return;
+    }
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const json = JSON.parse(text);
+
+        // Support both nested { data: { events, categories } } or flat format
+        const actualData = json.data || json;
+        const eventsCount = Array.isArray(actualData.events) ? actualData.events.length : 0;
+        const categoriesCount = Array.isArray(actualData.categories) ? actualData.categories.length : 0;
+
+        if (eventsCount === 0 && categoriesCount === 0) {
+          setDataMessage({
+            success: false,
+            message: '该 JSON 文件中未检测到有效的纪念日或分类数据！'
+          });
+          setParsedData(null);
+          return;
+        }
+
+        setParsedData({
+          eventsCount,
+          categoriesCount,
+          raw: actualData
+        });
+      } catch (err) {
+        setDataMessage({
+          success: false,
+          message: 'JSON 解析失败，请确认文件格式是否正确。'
+        });
+        setParsedData(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Execute Import
+  const handleImportData = async () => {
+    if (!parsedData || !parsedData.raw) {
+      setDataMessage({ success: false, message: '请先选择有效的 JSON 备份文件' });
+      return;
+    }
+
+    if (importMode === 'overwrite') {
+      const confirmOverwrite = window.confirm(
+        '⚠️ 警告：您选择了【清空覆盖导入】模式！\n\n这将会清空您当前所有的纪念日、分类及提醒数据，并完全用文件中的数据替代。确认继续吗？'
+      );
+      if (!confirmOverwrite) return;
+    }
+
+    try {
+      setImporting(true);
+      setDataMessage(null);
+      const res = await apiClient.importData({
+        mode: importMode,
+        data: parsedData.raw
+      });
+
+      setDataMessage({
+        success: true,
+        message: res.message || '数据导入成功！'
+      });
+
+      // Clear input
+      setSelectedFile(null);
+      setParsedData(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Refresh frontend data
+      onRefreshCategories();
+      if (onRefreshEvents) {
+        onRefreshEvents();
+      }
+    } catch (err: any) {
+      console.error('Import error:', err);
+      setDataMessage({
+        success: false,
+        message: '导入失败: ' + (err.response?.data?.message || err.message || '未知错误')
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div 
         className="modal-container animate-slide-up"
         style={{
-          maxWidth: '560px',
+          maxWidth: '580px',
           width: '100%'
         }}
       >
         <div className="modal-header">
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-            ⚙️ 系统设置与多用户管理
+            ⚙️ 系统设置与数据管理
           </h2>
           <button
             onClick={onClose}
@@ -129,18 +281,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div className="modal-body">
           {/* Settings Tabs */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             {[
               { key: 'webhook', label: '消息推送' },
               { key: 'category', label: '分类管理' },
-              { key: 'profile', label: '当前用户与隔离' }
+              { key: 'data', label: '数据导入导出' },
+              { key: 'profile', label: '当前用户' }
             ].map(t => (
               <button
                 key={t.key}
                 type="button"
-                onClick={() => setActiveTab(t.key as any)}
+                onClick={() => {
+                  setActiveTab(t.key as any);
+                  setDataMessage(null);
+                  setTestResult(null);
+                }}
                 style={{
-                  padding: '6px 16px',
+                  padding: '6px 14px',
                   borderRadius: 'var(--radius-sm)',
                   border: 'none',
                   background: activeTab === t.key ? 'var(--primary)' : 'var(--bg-subtle)',
@@ -337,7 +494,225 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* Tab 3: User Profile */}
+          {/* Tab 3: Data Export & Import (JSON) */}
+          {activeTab === 'data' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Export Card */}
+              <div style={{
+                padding: '18px 20px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-light)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Download size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      导出数据备份 (JSON)
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      将当前账户下的全部纪念日、分类、提醒配置及偏好导出为单个 .json 备份文件。
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={handleExportData}
+                    disabled={exporting}
+                    className="btn-primary-solid"
+                    style={{ height: '38px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+                  >
+                    {exporting ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                    <span>{exporting ? '正在打包导出...' : '导出 JSON 备份文件'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Import Card */}
+              <div style={{
+                padding: '18px 20px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-light)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: 'var(--gold-light)',
+                    color: 'var(--gold-deep)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Upload size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      导入数据备份 (JSON)
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      选择此前导出的 JSON 备份文件，恢复或同步您的纪念日数据。
+                    </p>
+                  </div>
+                </div>
+
+                {/* File picker */}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                    id="backup-file-input"
+                  />
+                  <label
+                    htmlFor="backup-file-input"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px dashed var(--gold)',
+                      background: 'var(--bg-card)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      color: 'var(--text-primary)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <FileJson size={18} color="var(--primary)" />
+                    <span>{selectedFile ? `已选择: ${selectedFile.name}` : '点击选择或拖入 .json 备份文件'}</span>
+                  </label>
+                </div>
+
+                {/* File Summary if parsed */}
+                {parsedData && (
+                  <div style={{
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>📊 检测到内容：</span>
+                    <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                      {parsedData.eventsCount} 个纪念日 / {parsedData.categoriesCount} 个分类
+                    </span>
+                  </div>
+                )}
+
+                {/* Mode Selection */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
+                    导入模式
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      color: 'var(--text-primary)'
+                    }}>
+                      <input
+                        type="radio"
+                        name="importMode"
+                        value="merge"
+                        checked={importMode === 'merge'}
+                        onChange={() => setImportMode('merge')}
+                      />
+                      <span><strong>追加合并（推荐）</strong>：保留现有数据</span>
+                    </label>
+
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      color: '#C53030'
+                    }}>
+                      <input
+                        type="radio"
+                        name="importMode"
+                        value="overwrite"
+                        checked={importMode === 'overwrite'}
+                        onChange={() => setImportMode('overwrite')}
+                      />
+                      <span><strong>清空覆盖</strong>：清除旧数据再恢复</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={handleImportData}
+                    disabled={importing || !parsedData}
+                    className="btn-primary-solid"
+                    style={{
+                      height: '38px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '13px',
+                      opacity: (!parsedData || importing) ? 0.6 : 1
+                    }}
+                  >
+                    {importing ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
+                    <span>{importing ? '正在恢复数据...' : '确认开始导入'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Message */}
+              {dataMessage && (
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: dataMessage.success ? 'var(--gold-light)' : '#FEF2F2',
+                  color: dataMessage.success ? 'var(--gold-deep)' : '#C53030',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  lineHeight: 1.5
+                }}>
+                  {dataMessage.success ? <CheckCircle size={18} style={{ flexShrink: 0 }} /> : <AlertCircle size={18} style={{ flexShrink: 0 }} />}
+                  <span>{dataMessage.message}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 4: User Profile */}
           {activeTab === 'profile' && user && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{
@@ -410,4 +785,3 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
-

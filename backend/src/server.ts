@@ -10,6 +10,7 @@ import { authController } from './controllers/authController';
 import { eventController } from './controllers/eventController';
 import { categoryController } from './controllers/categoryController';
 import { settingController } from './controllers/settingController';
+import { dataController } from './controllers/dataController';
 import { calculateEvent, getCurrentSolarTermInfo } from './services/lunarService';
 import { initCronJobs } from './services/cronService';
 
@@ -140,6 +141,10 @@ app.delete('/api/categories/:id', categoryController.deleteCategory);
 app.get('/api/settings', settingController.getSettings);
 app.put('/api/settings', settingController.updateSettings);
 app.post('/api/settings/test-webhook', settingController.testWebhook);
+
+// Data Export & Import (JSON)
+app.get('/api/data/export', dataController.exportData);
+app.post('/api/data/import', dataController.importData);
 
 // 4. Static Frontend Assets Serving
 const frontendDistPaths = [

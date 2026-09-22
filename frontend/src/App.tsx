@@ -213,7 +213,7 @@ export const App: React.FC = () => {
             🗓️
           </div>
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            欢迎使用 纪念日与节日提醒
+            欢迎使用 纪念日
           </h2>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '440px', lineHeight: 1.6 }}>
             支持公历/农历双引擎、二十四节气物候、智能倒计时与周期提醒。请登录或注册账户开始记录每一个值得铭记的日子。
@@ -301,6 +301,7 @@ export const App: React.FC = () => {
         }}
         categories={categories}
         onRefreshCategories={loadCategories}
+        onRefreshEvents={loadEvents}
       />
 
       <AuthModal

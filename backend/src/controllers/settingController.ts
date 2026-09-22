@@ -31,7 +31,7 @@ export async function sendWebhookNotification(
           elements: [
             {
               tag: 'markdown',
-              content: `**${title}**\n\n${content}\n\n*来自飞牛 fnOS 纪念日与节日提醒*`
+              content: `**${title}**\n\n${content}\n\n*来自飞牛 fnOS 纪念日*`
             }
           ]
         }
@@ -43,7 +43,7 @@ export async function sendWebhookNotification(
         msgtype: 'markdown',
         markdown: {
           title,
-          text: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日与节日提醒`
+          text: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日`
         }
       };
       await axios.post(url, payload);
@@ -52,7 +52,7 @@ export async function sendWebhookNotification(
       payload = {
         msgtype: 'markdown',
         markdown: {
-          content: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日与节日提醒`
+          content: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日`
         }
       };
       await axios.post(url, payload);

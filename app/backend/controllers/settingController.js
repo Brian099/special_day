@@ -32,7 +32,7 @@ async function sendWebhookNotification(url, type, title, content) {
                     elements: [
                         {
                             tag: 'markdown',
-                            content: `**${title}**\n\n${content}\n\n*来自飞牛 fnOS 纪念日与节日提醒*`
+                            content: `**${title}**\n\n${content}\n\n*来自飞牛 fnOS 纪念日*`
                         }
                     ]
                 }
@@ -45,7 +45,7 @@ async function sendWebhookNotification(url, type, title, content) {
                 msgtype: 'markdown',
                 markdown: {
                     title,
-                    text: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日与节日提醒`
+                    text: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日`
                 }
             };
             await axios_1.default.post(url, payload);
@@ -55,7 +55,7 @@ async function sendWebhookNotification(url, type, title, content) {
             payload = {
                 msgtype: 'markdown',
                 markdown: {
-                    content: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日与节日提醒`
+                    content: `### ${title}\n\n${content}\n\n> 来自飞牛 fnOS 纪念日`
                 }
             };
             await axios_1.default.post(url, payload);

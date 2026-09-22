@@ -1,7 +1,7 @@
 {
   ".url": {
     "anniversary-reminder.Application": {
-      "title": "纪念日与节日提醒",
+      "title": "纪念日",
       "icon": "images/icon_{0}.png",
       "type": "url",
       "protocol": "http",

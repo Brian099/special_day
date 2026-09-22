@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
             color: 'var(--text-primary)',
             lineHeight: 1.2
           }}>
-            纪念日提醒
+            纪念日
           </h1>
           <p style={{ 
             fontSize: '13px', 

@@ -15,6 +15,7 @@ const authController_1 = require("./controllers/authController");
 const eventController_1 = require("./controllers/eventController");
 const categoryController_1 = require("./controllers/categoryController");
 const settingController_1 = require("./controllers/settingController");
+const dataController_1 = require("./controllers/dataController");
 const lunarService_1 = require("./services/lunarService");
 const cronService_1 = require("./services/cronService");
 dotenv_1.default.config();
@@ -132,6 +133,9 @@ app.delete('/api/categories/:id', categoryController_1.categoryController.delete
 app.get('/api/settings', settingController_1.settingController.getSettings);
 app.put('/api/settings', settingController_1.settingController.updateSettings);
 app.post('/api/settings/test-webhook', settingController_1.settingController.testWebhook);
+// Data Export & Import (JSON)
+app.get('/api/data/export', dataController_1.dataController.exportData);
+app.post('/api/data/import', dataController_1.dataController.importData);
 // 4. Static Frontend Assets Serving
 const frontendDistPaths = [
     path_1.default.join(__dirname, '../ui'),

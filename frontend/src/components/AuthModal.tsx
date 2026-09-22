@@ -59,7 +59,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {isRegister ? '创建新账户' : '登录账户'}
             </h2>
             <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-              {isRegister ? '注册专属账户以管理您的纪念日与节日' : '输入用户名和密码登录'}
+              {isRegister ? '注册专属账户以管理您的纪念日' : '输入用户名和密码登录'}
             </p>
           </div>
           <button 

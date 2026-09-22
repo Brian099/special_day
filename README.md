@@ -1,4 +1,4 @@
-# 纪念日与节日提醒 (Anniversary Reminder for fnOS)
+# 纪念日 (Anniversary Reminder for fnOS)
 
 精致优雅的纪念日、生日、结婚纪念日、传统节日与周期日程（经期、升旗等）智能提醒应用，专为飞牛私有云 **fnOS** 及全平台设计打造。
 

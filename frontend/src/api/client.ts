@@ -114,5 +114,16 @@ export const apiClient = {
   async getCurrentSolarTerm(): Promise<SolarTermInfo> {
     const res = await api.get('/solar-terms/current');
     return res.data.data;
+  },
+
+  // Data Export & Import (JSON)
+  async exportData(): Promise<any> {
+    const res = await api.get('/data/export');
+    return res.data;
+  },
+
+  async importData(payload: { mode: 'merge' | 'overwrite'; data: any }): Promise<{ success: boolean; message: string; data?: any }> {
+    const res = await api.post('/data/import', payload);
+    return res.data;
   }
 };
