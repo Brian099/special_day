@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
+import { AppThemeType } from '../types';
 
 interface FallingLeavesTreeCanvasProps {
-  theme?: 'light' | 'dark';
+  theme?: AppThemeType | 'light' | 'dark' | string;
 }
 
 interface TreeBranch {
@@ -53,13 +54,13 @@ interface TreeData {
   };
 }
 
-export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = ({ theme = 'light' }) => {
+export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = ({ theme = 'autumn-gold' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     let animationFrameId: number;
@@ -70,21 +71,60 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
     let root = { x: 0, y: 0 };
     let dpr = 1;
 
-    const isDark = theme === 'dark';
+    // 离屏树木画布：将复杂的递归树和所有树叶一次性预渲染在离屏 Canvas 上
+    let offscreenTreeCanvas: HTMLCanvasElement | null = null;
 
-    const LEAF_COLORS = isDark
-      ? [
-          '#d48855', '#e09855', '#eac058',
-          '#c4653f', '#b85434', '#f0ca6a',
-          '#b0783a', '#e0a050'
-        ]
-      : [
-          '#c9622a', '#d97b2b', '#e0a02e',
-          '#b64a1f', '#a83c1c', '#e6b84a',
-          '#8f5a1e', '#cf8a2c'
-        ];
+    let isPageVisible = !document.hidden;
 
-    /* ---------------- 叶形 ---------------- */
+    const isDark = theme === 'dark' || theme === 'dark-night';
+
+    // 5 套主题对应的自然树叶色盘
+    let LEAF_COLORS: string[] = [];
+    let BRANCH_COLOR_BASE = { r: 72, g: 48, b: 34 };
+
+    if (theme === 'spring-sakura') {
+      // 春日绯樱色系
+      LEAF_COLORS = [
+        '#e8849b', '#f29fb2', '#f7b5c4',
+        '#d4607c', '#c74d6c', '#fedfe5',
+        '#ea91a7', '#f4a8b9'
+      ];
+      BRANCH_COLOR_BASE = { r: 88, g: 50, b: 58 };
+    } else if (theme === 'summer-forest') {
+      // 松柏竹青色系
+      LEAF_COLORS = [
+        '#4f8c6f', '#62a884', '#79bf9c',
+        '#386b52', '#2f5a44', '#a8d8be',
+        '#579778', '#6eb38f'
+      ];
+      BRANCH_COLOR_BASE = { r: 42, g: 62, b: 50 };
+    } else if (theme === 'royal-blue') {
+      // 霁蓝天青色系
+      LEAF_COLORS = [
+        '#4b7e9f', '#5e94b8', '#73a9cc',
+        '#366582', '#2c536d', '#a4cde5',
+        '#548ab0', '#6aa0c4'
+      ];
+      BRANCH_COLOR_BASE = { r: 44, g: 58, b: 72 };
+    } else if (isDark) {
+      // 暗夜流金色系
+      LEAF_COLORS = [
+        '#d48855', '#e09855', '#eac058',
+        '#c4653f', '#b85434', '#f0ca6a',
+        '#b0783a', '#e0a050'
+      ];
+      BRANCH_COLOR_BASE = { r: 160, g: 120, b: 90 };
+    } else {
+      // 经典秋叶金（默认）
+      LEAF_COLORS = [
+        '#c9622a', '#d97b2b', '#e0a02e',
+        '#b64a1f', '#a83c1c', '#e6b84a',
+        '#8f5a1e', '#cf8a2c'
+      ];
+      BRANCH_COLOR_BASE = { r: 72, g: 48, b: 34 };
+    }
+
+    /* ---------------- 叶形路径 ---------------- */
     function leafPath(c: CanvasRenderingContext2D, s: number) {
       c.beginPath();
       c.moveTo(0, -s * 0.5);
@@ -93,35 +133,42 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
       c.closePath();
     }
 
-    function drawLeafShape(x: number, y: number, size: number, angle: number, color: string, alpha: number) {
-      if (!ctx) return;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = color;
-      leafPath(ctx, size);
-      ctx.fill();
+    function drawLeafShape(
+      c: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      size: number,
+      angle: number,
+      color: string,
+      alpha: number
+    ) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(angle);
+      c.globalAlpha = alpha;
+      c.fillStyle = color;
+      leafPath(c, size);
+      c.fill();
 
-      ctx.globalAlpha = alpha * 0.45;
-      ctx.strokeStyle = isDark ? 'rgba(255, 230, 200, 0.6)' : 'rgba(90, 50, 20, 0.9)';
-      ctx.lineWidth = Math.max(0.6, size * 0.06);
-      ctx.beginPath();
-      ctx.moveTo(0, -size * 0.42);
-      ctx.lineTo(0, size * 0.42);
-      ctx.stroke();
-      ctx.restore();
+      c.globalAlpha = alpha * 0.45;
+      c.strokeStyle = isDark ? 'rgba(255, 230, 200, 0.6)' : 'rgba(90, 50, 20, 0.9)';
+      c.lineWidth = Math.max(0.6, size * 0.06);
+      c.beginPath();
+      c.moveTo(0, -size * 0.42);
+      c.lineTo(0, size * 0.42);
+      c.stroke();
+      c.restore();
     }
 
-    /* ---------------- 生成自然递归树 ---------------- */
+    /* ---------------- 生成自然递归树并离屏预渲染 ---------------- */
     function buildTree() {
-      const baseX = W * 0.93;
+      const isMobile = W <= 768;
+      const baseX = W * (isMobile ? 0.95 : 0.93);
       const baseY = H * 1.02;
       root = { x: baseX, y: baseY };
 
-      // 树高：主干长度按画面高度算，让树冠自然舒展于页面顶部与右侧
-      const trunkLen = H * 0.30;
-      const trunkW = Math.max(W * 0.018, 10);
+      const trunkLen = H * (isMobile ? 0.28 : 0.30);
+      const trunkW = Math.max(W * (isMobile ? 0.02 : 0.018), 9);
 
       const branches: TreeBranch[] = [];
       const crownLeaves: CrownLeaf[] = [];
@@ -133,7 +180,7 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
         branches.push({ x1: x, y1: y, x2, y2, w: width });
 
         if (depth <= 3 && len > 4) {
-          const leafCount = depth <= 1 ? 4 : 2;
+          const leafCount = depth <= 1 ? (isMobile ? 3 : 4) : 2;
           for (let i = 0; i < leafCount; i++) {
             const t = 0.35 + Math.random() * 0.65;
             const lx = x + (x2 - x) * t + (Math.random() - 0.5) * len * 0.7;
@@ -144,7 +191,7 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
               y: ly,
               size: 5 + Math.random() * 6,
               angle: Math.random() * Math.PI * 2,
-              swayAmp: 0.12 + Math.random() * 0.18,
+              swayAmp: 0.10 + Math.random() * 0.15,
               swayPhase: Math.random() * Math.PI * 2,
               swaySpeed: 0.6 + Math.random() * 0.9,
               color: LEAF_COLORS[(Math.random() * LEAF_COLORS.length) | 0],
@@ -161,12 +208,12 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
         grow(x2, y2, angle - spread, len * shrink, width * 0.68, depth - 1);
         grow(x2, y2, angle + spread * 0.85, len * shrink * 0.95, width * 0.68, depth - 1);
 
-        if (depth > 2 && Math.random() < 0.35) {
+        if (depth > 2 && Math.random() < 0.32) {
           grow(x2, y2, angle + (Math.random() - 0.5) * 0.5, len * 0.6, width * 0.5, depth - 2);
         }
       }
 
-      grow(baseX, baseY, -Math.PI / 2 - 0.12, trunkLen, trunkW, 9);
+      grow(baseX, baseY, -Math.PI / 2 - 0.12, trunkLen, trunkW, 8);
 
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       crownLeaves.forEach(p => {
@@ -181,16 +228,48 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
         crownLeaves,
         crown: { minX, maxX, minY, maxY }
       };
+
+      // 预渲染离屏树木（增加 160px 四周超量边距 PAD，彻底杜绝大树左右晃动时边缘留白或切边）
+      const PAD = 160;
+      offscreenTreeCanvas = document.createElement('canvas');
+      offscreenTreeCanvas.width = Math.floor((W + PAD * 2) * dpr);
+      offscreenTreeCanvas.height = Math.floor((H + PAD * 2) * dpr);
+      const offCtx = offscreenTreeCanvas.getContext('2d', { alpha: true });
+      if (offCtx) {
+        // 将原点平移 PAD 逻辑像素
+        offCtx.setTransform(dpr, 0, 0, dpr, PAD * dpr, PAD * dpr);
+
+        // 1. 绘制所有树枝
+        branches.forEach(b => {
+          const t = Math.min(b.w / 14, 1);
+          const r = Math.round(BRANCH_COLOR_BASE.r + (1 - t) * 30);
+          const g = Math.round(BRANCH_COLOR_BASE.g + (1 - t) * 25);
+          const bVal = Math.round(BRANCH_COLOR_BASE.b + (1 - t) * 20);
+          offCtx.strokeStyle = `rgba(${r}, ${g}, ${bVal}, ${isDark ? 0.85 : 0.92})`;
+          offCtx.lineWidth = b.w;
+          offCtx.lineCap = 'round';
+          offCtx.beginPath();
+          offCtx.moveTo(b.x1, b.y1);
+          offCtx.lineTo(b.x2, b.y2);
+          offCtx.stroke();
+        });
+
+        // 2. 绘制所有树叶
+        crownLeaves.forEach(l => {
+          drawLeafShape(offCtx, l.x, l.y, l.size, l.angle, l.color, l.alpha);
+        });
+      }
     }
 
-    /* ---------------- 尺寸自适应 ---------------- */
+    /* ---------------- 尺寸自适应（全高清 Retian 支持） ---------------- */
     function resize() {
       if (!canvas || !ctx) return;
+      // 保持全高清 DPR（最大支持 2.0），移动端和桌面端都清晰细腻
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = window.innerWidth;
       H = window.innerHeight;
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
+      canvas.width = Math.floor(W * dpr);
+      canvas.height = Math.floor(H * dpr);
       canvas.style.width = W + 'px';
       canvas.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -202,8 +281,8 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
     /* ---------------- 整棵树的摆动 ---------------- */
     function treeSway(time: number) {
       return (
-        Math.sin(time * 0.55) * 0.022 +
-        Math.sin(time * 1.37 + 1.1) * 0.009
+        Math.sin(time * 0.55) * 0.018 +
+        Math.sin(time * 1.37 + 1.1) * 0.007
       );
     }
 
@@ -218,39 +297,24 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
       };
     }
 
-    /* ---------------- 绘制树 + 树上叶子 ---------------- */
+    /* ---------------- 极速绘制树（GPU 贴图，带安全边距防止留白） ---------------- */
     function drawTree(time: number) {
-      if (!tree || !ctx) return;
+      if (!offscreenTreeCanvas || !ctx) return;
 
       const sway = treeSway(time);
+      const PAD = 160;
 
       ctx.save();
       ctx.translate(root.x, root.y);
       ctx.rotate(sway);
-      ctx.translate(-root.x, -root.y);
-
-      // 1. 树枝
-      tree.branches.forEach(b => {
-        const t = Math.min(b.w / 14, 1);
-        if (isDark) {
-          ctx.strokeStyle = `rgba(${160 + (1 - t) * 35}, ${120 + (1 - t) * 30}, ${90 + (1 - t) * 20}, 0.85)`;
-        } else {
-          ctx.strokeStyle = `rgba(${72 + (1 - t) * 40}, ${48 + (1 - t) * 30}, ${34 + (1 - t) * 20}, 0.92)`;
-        }
-        ctx.lineWidth = b.w;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(b.x1, b.y1);
-        ctx.lineTo(b.x2, b.y2);
-        ctx.stroke();
-      });
-
-      // 2. 树上叶子：自身摆动 + 随整树倾斜
-      tree.crownLeaves.forEach(l => {
-        const localSway = Math.sin(time * l.swaySpeed + l.swayPhase) * l.swayAmp;
-        drawLeafShape(l.x, l.y, l.size, l.angle + localSway, l.color, l.alpha);
-      });
-
+      // 绘制带 Overscan 的离屏画布，将边缘拉出视口外，完全消除旋转留白
+      ctx.drawImage(
+        offscreenTreeCanvas,
+        -root.x - PAD,
+        -root.y - PAD,
+        W + PAD * 2,
+        H + PAD * 2
+      );
       ctx.restore();
     }
 
@@ -265,20 +329,20 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
       return {
         x: p.x,
         y: p.y,
-        size: 5 + Math.random() * 7,
-        fall: 22 + Math.random() * 40,
-        slip: 18 + Math.random() * 35,
+        size: 5 + Math.random() * 6,
+        fall: 22 + Math.random() * 35,
+        slip: 18 + Math.random() * 30,
         spin: Math.random() * Math.PI * 2,
-        spinSpeed: (0.6 + Math.random() * 1.6) * (Math.random() < 0.5 ? -1 : 1),
+        spinSpeed: (0.6 + Math.random() * 1.5) * (Math.random() < 0.5 ? -1 : 1),
         roll: Math.random() * Math.PI * 2,
         rollSpeed: (Math.random() - 0.5) * 1.2,
         // 横向漂移：向左移动，飘向左下角
-        drift: -35 - Math.random() * 45,
+        drift: -35 - Math.random() * 40,
         alpha: isDark ? 0.55 + Math.random() * 0.35 : 0.65 + Math.random() * 0.35,
         color: LEAF_COLORS[(Math.random() * LEAF_COLORS.length) | 0],
         swayPhase: Math.random() * Math.PI * 2,
         swaySpeed: 1 + Math.random() * 1.5,
-        swayAmp: 6 + Math.random() * 14
+        swayAmp: 6 + Math.random() * 12
       };
     }
 
@@ -305,11 +369,13 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
     }
 
     function updateLeaves(dt: number, sway: number) {
-      const target = Math.round((W * H) / 26000);
-      const count = Math.min(target, 120);
+      const isMobile = W <= 768;
+      // 移动端保持 18 片适量自然落叶，桌面端 36 片
+      const maxCount = isMobile ? 18 : 36;
+      const target = Math.min(Math.round((W * H) / 36000), maxCount);
 
-      if (leaves.length < count) {
-        for (let i = 0; i < 2 && leaves.length < count; i++) {
+      if (leaves.length < target) {
+        for (let i = 0; i < 1 && leaves.length < target; i++) {
           leaves.push(createLeaf(sway));
         }
       }
@@ -334,35 +400,51 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
       }
     }
 
-    /* ---------------- 主循环 ---------------- */
+    /* ---------------- 主循环：连续平滑无缝渲染 ---------------- */
     let last = performance.now();
+    let simTime = 0;
 
     function frame(now: number) {
-      if (!ctx) return;
-      const dt = Math.min((now - last) / 1000, 0.05);
+      const rawDt = (now - last) / 1000;
       last = now;
-      const time = now / 1000;
 
-      ctx.clearRect(0, 0, W, H);
+      // 页面可见时平滑更新，dt 限制在 0.05s 防止切后台恢复跳帧
+      if (isPageVisible && ctx) {
+        const dt = Math.min(rawDt, 0.05);
+        simTime += dt;
 
-      const sway = treeSway(time);
+        ctx.clearRect(0, 0, W, H);
 
-      drawTree(time);
-      updateLeaves(dt, sway);
+        const sway = treeSway(simTime);
 
-      leaves.sort((a, b) => a.size - b.size);
-      leaves.forEach(drawFallingLeaf);
+        drawTree(simTime);
+        updateLeaves(dt, sway);
+
+        leaves.sort((a, b) => a.size - b.size);
+        leaves.forEach(drawFallingLeaf);
+      }
 
       animationFrameId = requestAnimationFrame(frame);
     }
 
+    const handleVisibilityChange = () => {
+      isPageVisible = !document.hidden;
+      if (isPageVisible) {
+        last = performance.now();
+      }
+    };
+
     window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     resize();
     animationFrameId = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      offscreenTreeCanvas = null;
     };
   }, [theme]);
 
@@ -377,6 +459,12 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
         height: '100vh',
         pointerEvents: 'none',
         zIndex: 0,
+        transform: 'translate3d(0, 0, 0)',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        contain: 'strict',
       }}
     />
   );

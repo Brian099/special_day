@@ -12,7 +12,7 @@ import {
   FileJson,
   RefreshCw
 } from 'lucide-react';
-import { User, Category } from '../types';
+import { User, Category, AppThemeType, APP_THEMES } from '../types';
 import { apiClient } from '../api/client';
 
 interface SettingsModalProps {
@@ -23,6 +23,8 @@ interface SettingsModalProps {
   categories: Category[];
   onRefreshCategories: () => void;
   onRefreshEvents?: () => void;
+  currentTheme?: AppThemeType | string;
+  onSelectTheme?: (theme: AppThemeType) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -32,9 +34,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onLogout,
   categories,
   onRefreshCategories,
-  onRefreshEvents
+  onRefreshEvents,
+  currentTheme = 'autumn-gold',
+  onSelectTheme
 }) => {
-  const [activeTab, setActiveTab] = useState<'webhook' | 'category' | 'data' | 'profile'>('webhook');
+  const [activeTab, setActiveTab] = useState<'theme' | 'webhook' | 'category' | 'data' | 'profile'>('theme');
 
   // Webhook form
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -283,6 +287,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Settings Tabs */}
           <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             {[
+              { key: 'theme', label: '🎨 主题外观' },
               { key: 'webhook', label: '消息推送' },
               { key: 'category', label: '分类管理' },
               { key: 'data', label: '数据导入导出' },
@@ -313,6 +318,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Tab 0: Theme Appearance */}
+          {activeTab === 'theme' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                选择您喜爱的传统国风与现代色系。主题配置将自动与当前登录账户云端绑定，不同账户可享有独立个性化风格。
+              </p>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '12px',
+                marginTop: '4px'
+              }}>
+                {APP_THEMES.map(th => {
+                  const isSelected = currentTheme === th.id || (th.id === 'autumn-gold' && currentTheme === 'light') || (th.id === 'dark-night' && currentTheme === 'dark');
+                  return (
+                    <div
+                      key={th.id}
+                      onClick={() => onSelectTheme && onSelectTheme(th.id)}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 'var(--radius-md)',
+                        background: isSelected ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                        border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        position: 'relative',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isSelected ? '0 4px 16px rgba(139, 94, 94, 0.12)' : 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '18px' }}>{th.icon}</span>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {th.name}
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          background: th.previewColor,
+                          border: '2px solid #fff',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                        }} />
+                      </div>
+                      <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', margin: 0, lineHeight: 1.3 }}>
+                        {th.desc}
+                      </p>
+                      {isSelected && (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: '10px',
+                          background: 'var(--primary)',
+                          color: '#fff',
+                          fontSize: '10px',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          fontWeight: 600
+                        }}>
+                          当前生效
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Tab 1: Webhook Push */}
           {activeTab === 'webhook' && (

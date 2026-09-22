@@ -7,14 +7,14 @@ import { EventFormModal } from './components/EventFormModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
 import { FallingLeavesTreeCanvas } from './components/FallingLeavesTreeCanvas';
-import { EventItem, Category, User, SolarTermInfo } from './types';
+import { EventItem, Category, User, SolarTermInfo, AppThemeType, APP_THEMES } from './types';
 import { apiClient } from './api/client';
 import { Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
   // State
   const [user, setUser] = useState<User | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<AppThemeType>('autumn-gold');
 
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -33,24 +33,44 @@ export const App: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
 
-  // Theme synchronization
+  // Apply & Sync Theme Helper
+  const applyTheme = useCallback((targetTheme: AppThemeType, saveToServer = true) => {
+    setTheme(targetTheme);
+    localStorage.setItem('anniversary_theme', targetTheme);
+    document.documentElement.setAttribute('data-theme', targetTheme);
+
+    if (user && saveToServer) {
+      apiClient.updateSettings({ theme_mode: targetTheme }).catch(err => {
+        console.error('Failed to sync theme to user account settings:', err);
+      });
+    }
+  }, [user]);
+
+  // Multi-Theme Cycle: 循环切换 5 套主题
+  const cycleTheme = () => {
+    const currentIndex = APP_THEMES.findIndex(t => t.id === theme);
+    const nextIndex = (currentIndex + 1) % APP_THEMES.length;
+    const nextTheme = APP_THEMES[nextIndex >= 0 ? nextIndex : 0].id;
+    applyTheme(nextTheme, true);
+  };
+
+  // Theme initial synchronization from local storage or system preference
   useEffect(() => {
-    const savedTheme = localStorage.getItem('anniversary_theme') as 'light' | 'dark';
-    if (savedTheme) {
+    const savedTheme = localStorage.getItem('anniversary_theme') as AppThemeType;
+    if (savedTheme && APP_THEMES.some(t => t.id === savedTheme)) {
       setTheme(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
+    } else if (savedTheme === ('dark' as any)) {
+      setTheme('dark-night');
+      document.documentElement.setAttribute('data-theme', 'dark-night');
     } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-      document.documentElement.setAttribute('data-theme', 'dark');
+      setTheme('dark-night');
+      document.documentElement.setAttribute('data-theme', 'dark-night');
+    } else {
+      setTheme('autumn-gold');
+      document.documentElement.setAttribute('data-theme', 'autumn-gold');
     }
   }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('anniversary_theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-  };
 
   // Load Solar Term
   const loadSolarTerm = useCallback(async () => {
@@ -62,11 +82,25 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Load User Info
+  // Load User Info & Sync per-user Theme from database
   const loadUser = useCallback(async () => {
     try {
       const res = await apiClient.getCurrentUser();
       setUser(res.user);
+      if (res.user) {
+        // 读取当前登录账户绑定的主题配置
+        try {
+          const settings = await apiClient.getSettings();
+          if (settings && settings.theme_mode && settings.theme_mode !== 'system') {
+            const userTheme = settings.theme_mode === 'dark' ? 'dark-night' : (settings.theme_mode as AppThemeType);
+            if (APP_THEMES.some(t => t.id === userTheme)) {
+              setTheme(userTheme);
+              document.documentElement.setAttribute('data-theme', userTheme);
+              localStorage.setItem('anniversary_theme', userTheme);
+            }
+          }
+        } catch {}
+      }
       return res.user;
     } catch {
       setUser(null);
@@ -166,18 +200,18 @@ export const App: React.FC = () => {
 
       <div className="app-layout">
         {/* Top Header */}
-      <Header
-        user={user}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onOpenAddModal={() => {
-          if (!user) {
-            setIsAuthOpen(true);
-            return;
-          }
-          setEditingEvent(null);
-          setIsAddModalOpen(true);
-        }}
+        <Header
+          user={user}
+          theme={theme}
+          onCycleTheme={cycleTheme}
+          onOpenAddModal={() => {
+            if (!user) {
+              setIsAuthOpen(true);
+              return;
+            }
+            setEditingEvent(null);
+            setIsAddModalOpen(true);
+          }}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         searchQuery={searchQuery}
@@ -302,6 +336,8 @@ export const App: React.FC = () => {
         categories={categories}
         onRefreshCategories={loadCategories}
         onRefreshEvents={loadEvents}
+        currentTheme={theme}
+        onSelectTheme={(t) => applyTheme(t, true)}
       />
 
       <AuthModal

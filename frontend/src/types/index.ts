@@ -55,9 +55,19 @@ export interface Category {
   event_count?: number;
 }
 
+export const APP_THEMES = [
+  { id: 'autumn-gold', name: '秋叶金', icon: '🍂', desc: '经典秋意 · 暖酒红金', previewColor: '#8B5E5E' },
+  { id: 'dark-night', name: '暮夜凝月', icon: '🌙', desc: '曜石暗夜 · 沉木金晖', previewColor: '#D4B783' },
+  { id: 'spring-sakura', name: '落樱绯雪', icon: '🌸', desc: '春日绯樱 · 柔美雅致', previewColor: '#A85D6F' },
+  { id: 'summer-forest', name: '竹影青翠', icon: '🍃', desc: '松柏青竹 · 清雅幽静', previewColor: '#3D6B58' },
+  { id: 'royal-blue', name: '霁蓝月白', icon: '🌊', desc: '天青霁蓝 · 沉静如水', previewColor: '#3B5E78' },
+] as const;
+
+export type AppThemeType = typeof APP_THEMES[number]['id'];
+
 export interface UserSettings {
   user_id: string;
-  theme_mode: 'system' | 'light' | 'dark';
+  theme_mode: AppThemeType | 'system' | 'light' | 'dark' | string;
   default_calendar_type: 'solar' | 'lunar';
   webhook_url?: string;
   webhook_type?: string;
