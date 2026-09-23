@@ -401,7 +401,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div className="modal-body">
           {/* Settings Tabs */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div className="settings-tabs-grid">
             {[
               { key: 'theme', label: '🎨 主题外观' },
               { key: 'webhook', label: '📢 消息推送' },
@@ -420,18 +420,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   setEmailTestResult(null);
                   setEmailSaveResult(null);
                 }}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  background: activeTab === t.key ? 'var(--primary)' : 'var(--bg-subtle)',
-                  color: activeTab === t.key ? '#fff' : 'var(--text-secondary)',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: activeTab === t.key ? '0 3px 10px rgba(139, 94, 94, 0.2)' : 'none'
-                }}
+                className={`settings-tab-btn ${activeTab === t.key ? 'active' : ''}`}
               >
                 {t.label}
               </button>
@@ -918,40 +907,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Tab 2: Category Management */}
           {activeTab === 'category' && (
             <div>
-              <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <form onSubmit={handleCreateCategory} className="category-create-form">
                 <input
                   type="text"
                   placeholder="新增分类名称"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-light)',
-                    background: 'var(--bg-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
+                  className="category-create-input"
                 />
                 <input
                   type="color"
                   value={newCatColor}
                   onChange={(e) => setNewCatColor(e.target.value)}
-                  style={{
-                    width: '40px',
-                    height: '38px',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    background: 'none'
-                  }}
+                  className="category-create-color"
+                  title="选择分类标识颜色"
                 />
                 <button
                   type="submit"
-                  className="btn-primary-solid"
-                  style={{ height: '38px', borderRadius: 'var(--radius-sm)', fontSize: '13px' }}
+                  className="btn-primary-solid category-create-btn"
                 >
                   <Plus size={15} />
                   添加
