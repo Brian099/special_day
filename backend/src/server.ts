@@ -141,6 +141,7 @@ app.delete('/api/categories/:id', categoryController.deleteCategory);
 app.get('/api/settings', settingController.getSettings);
 app.put('/api/settings', settingController.updateSettings);
 app.post('/api/settings/test-webhook', settingController.testWebhook);
+app.post('/api/settings/test-email', settingController.testEmail);
 
 // Data Export & Import (JSON)
 app.get('/api/data/export', dataController.exportData);

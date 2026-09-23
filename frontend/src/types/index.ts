@@ -59,6 +59,7 @@ export const APP_THEMES = [
   { id: 'autumn-gold', name: '秋叶金', icon: '🍂', desc: '经典秋意 · 暖酒红金', previewColor: '#8B5E5E' },
   { id: 'dark-night', name: '暮夜凝月', icon: '🌙', desc: '曜石暗夜 · 沉木金晖', previewColor: '#D4B783' },
   { id: 'spring-sakura', name: '落樱绯雪', icon: '🌸', desc: '春日绯樱 · 柔美雅致', previewColor: '#A85D6F' },
+  { id: 'cute-pink', name: '可爱粉', icon: '🎀', desc: '软萌甜心 · 蜜桃樱粉', previewColor: '#FF6B8B' },
   { id: 'summer-forest', name: '竹影青翠', icon: '🍃', desc: '松柏青竹 · 清雅幽静', previewColor: '#3D6B58' },
   { id: 'royal-blue', name: '霁蓝月白', icon: '🌊', desc: '天青霁蓝 · 沉静如水', previewColor: '#3B5E78' },
 ] as const;
@@ -71,9 +72,17 @@ export interface UserSettings {
   default_calendar_type: 'solar' | 'lunar';
   webhook_url?: string;
   webhook_type?: string;
-  notify_web: boolean;
-  notify_email: boolean;
-  notify_webhook: boolean;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_pass?: string;
+  smtp_from?: string;
+  smtp_secure?: boolean | number;
+  email_recipient?: string;
+  email_enabled?: boolean | number;
+  notify_web?: boolean;
+  notify_email?: boolean;
+  notify_webhook?: boolean;
 }
 
 export interface SolarTermInfo {

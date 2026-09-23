@@ -430,7 +430,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
       const remindersPayload = advanceDays.map(days => ({
         remind_time: remindTime,
         advance_days: days,
-        notify_channels: ['web', 'webhook'],
+        notify_channels: ['web', 'webhook', 'email'],
         enabled: true
       }));
 

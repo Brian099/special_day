@@ -105,6 +105,19 @@ export const apiClient = {
     return res.data;
   },
 
+  async testEmail(emailConfig: {
+    smtp_host: string;
+    smtp_port: number;
+    smtp_user: string;
+    smtp_pass?: string;
+    smtp_from?: string;
+    smtp_secure?: boolean;
+    email_recipient: string;
+  }): Promise<{ message: string }> {
+    const res = await api.post('/settings/test-email', emailConfig);
+    return res.data;
+  },
+
   // Calculations & Solar Terms
   async previewCalculate(data: any): Promise<CalculationResult> {
     const res = await api.post('/preview/calculate', data);

@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "lunar-javascript": "^1.6.12",
     "node-cron": "^3.0.3",
+    "nodemailer": "^10.0.10",
     "sql.js": "^1.14.2"
   },
   "devDependencies": {
@@ -26,6 +27,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.17.10",
     "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.2",
     "@types/sql.js": "^1.4.11",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.2",

@@ -90,6 +90,14 @@ export const FallingLeavesTreeCanvas: React.FC<FallingLeavesTreeCanvasProps> = (
         '#ea91a7', '#f4a8b9'
       ];
       BRANCH_COLOR_BASE = { r: 88, g: 50, b: 58 };
+    } else if (theme === 'cute-pink') {
+      // 可爱粉色系（软萌蜜桃樱粉、草莓糖果色）
+      LEAF_COLORS = [
+        '#ff7597', '#ff8fad', '#ffa8be',
+        '#ff537b', '#e83e68', '#ffd4e2',
+        '#ff99b4', '#ff6b8b'
+      ];
+      BRANCH_COLOR_BASE = { r: 92, g: 48, b: 60 };
     } else if (theme === 'summer-forest') {
       // 松柏竹青色系
       LEAF_COLORS = [

@@ -7,6 +7,7 @@ exports.settingController = void 0;
 exports.sendWebhookNotification = sendWebhookNotification;
 const axios_1 = __importDefault(require("axios"));
 const db_1 = require("../db");
+const emailService_1 = require("../services/emailService");
 async function sendWebhookNotification(url, type, title, content) {
     try {
         let payload = {};
@@ -90,17 +91,34 @@ exports.settingController = {
     },
     updateSettings(req, res) {
         const userId = req.user.id;
-        const { theme_mode, default_calendar_type, webhook_url, webhook_type } = req.body;
+        const { theme_mode, default_calendar_type, webhook_url, webhook_type, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from, smtp_secure, email_recipient, email_enabled } = req.body;
+        const current = db_1.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(userId);
+        // If password is not provided or masked, keep current password
+        const finalPass = (smtp_pass !== undefined && smtp_pass !== '')
+            ? smtp_pass
+            : (current?.smtp_pass || null);
         db_1.db.prepare(`
-      INSERT INTO user_settings (user_id, theme_mode, default_calendar_type, webhook_url, webhook_type, updated_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO user_settings (
+        user_id, theme_mode, default_calendar_type, webhook_url, webhook_type,
+        smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from, smtp_secure,
+        email_recipient, email_enabled, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id) DO UPDATE SET
         theme_mode = COALESCE(excluded.theme_mode, theme_mode),
         default_calendar_type = COALESCE(excluded.default_calendar_type, default_calendar_type),
         webhook_url = excluded.webhook_url,
         webhook_type = COALESCE(excluded.webhook_type, webhook_type),
+        smtp_host = excluded.smtp_host,
+        smtp_port = excluded.smtp_port,
+        smtp_user = excluded.smtp_user,
+        smtp_pass = excluded.smtp_pass,
+        smtp_from = excluded.smtp_from,
+        smtp_secure = excluded.smtp_secure,
+        email_recipient = excluded.email_recipient,
+        email_enabled = excluded.email_enabled,
         updated_at = CURRENT_TIMESTAMP
-    `).run(userId, theme_mode || 'system', default_calendar_type || 'solar', webhook_url !== undefined ? webhook_url : null, webhook_type || 'generic');
+    `).run(userId, theme_mode || current?.theme_mode || 'system', default_calendar_type || current?.default_calendar_type || 'solar', webhook_url !== undefined ? webhook_url : (current?.webhook_url ?? null), webhook_type || current?.webhook_type || 'generic', smtp_host !== undefined ? smtp_host : (current?.smtp_host ?? null), smtp_port !== undefined ? Number(smtp_port) : (current?.smtp_port ?? 465), smtp_user !== undefined ? smtp_user : (current?.smtp_user ?? null), finalPass, smtp_from !== undefined ? smtp_from : (current?.smtp_from ?? null), smtp_secure !== undefined ? (smtp_secure ? 1 : 0) : (current?.smtp_secure ?? 1), email_recipient !== undefined ? email_recipient : (current?.email_recipient ?? null), email_enabled !== undefined ? (email_enabled ? 1 : 0) : (current?.email_enabled ?? 0));
         res.json({ success: true, message: '设置保存成功' });
     },
     async testWebhook(req, res) {
@@ -115,6 +133,40 @@ exports.settingController = {
         }
         else {
             res.status(500).json({ success: false, message: `推送失败: ${result.message}` });
+        }
+    },
+    async testEmail(req, res) {
+        const userId = req.user.id;
+        const { smtp_host, smtp_port = 465, smtp_user, smtp_pass, smtp_from, smtp_secure = true, email_recipient } = req.body;
+        const current = db_1.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(userId);
+        const host = smtp_host || current?.smtp_host;
+        const port = Number(smtp_port) || current?.smtp_port || 465;
+        const user = smtp_user || current?.smtp_user;
+        const pass = (smtp_pass !== undefined && smtp_pass !== '') ? smtp_pass : current?.smtp_pass;
+        const from = smtp_from || current?.smtp_from;
+        const secure = smtp_secure !== undefined ? Boolean(smtp_secure) : Boolean(current?.smtp_secure ?? true);
+        const recipient = email_recipient || current?.email_recipient;
+        if (!host || !user || !pass) {
+            res.status(400).json({ success: false, message: '请完整配置 SMTP 服务器地址、发信账号及授权码' });
+            return;
+        }
+        if (!recipient) {
+            res.status(400).json({ success: false, message: '请提供测试收件邮箱地址' });
+            return;
+        }
+        const result = await emailService_1.EmailService.sendTestEmail({
+            smtp_host: host,
+            smtp_port: port,
+            smtp_user: user,
+            smtp_pass: pass,
+            smtp_from: from,
+            smtp_secure: secure
+        }, recipient);
+        if (result.success) {
+            res.json({ success: true, message: result.message });
+        }
+        else {
+            res.status(500).json({ success: false, message: result.message });
         }
     }
 };

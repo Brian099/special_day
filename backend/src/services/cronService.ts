@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { db } from '../db';
 import { calculateEvent } from './lunarService';
 import { sendWebhookNotification } from '../controllers/settingController';
+import { EmailService } from './emailService';
 
 export function initCronJobs() {
   // Run every hour at minute 0 (e.g. 09:00, 10:00...)
@@ -21,12 +22,21 @@ export function initCronJobs() {
 }
 
 export async function checkAndDispatchReminders() {
-  const now = new Date();
-  const currentHour = `${now.getHours().toString().padStart(2, '0')}:00`;
-
-  // Query all active events
+  // Query all active events and user notification settings
   const events = db.prepare(`
-    SELECT e.*, u.username, s.webhook_url, s.webhook_type
+    SELECT 
+      e.*, 
+      u.username, 
+      s.webhook_url, 
+      s.webhook_type,
+      s.smtp_host,
+      s.smtp_port,
+      s.smtp_user,
+      s.smtp_pass,
+      s.smtp_from,
+      s.smtp_secure,
+      s.email_recipient,
+      s.email_enabled
     FROM events e
     JOIN users u ON e.user_id = u.id
     LEFT JOIN user_settings s ON e.user_id = s.user_id
@@ -53,8 +63,15 @@ export async function checkAndDispatchReminders() {
     for (const r of reminders) {
       // Check advance_days condition
       if (calc.daysRemaining === r.advance_days) {
-        // If user has configured a webhook
-        if (event.webhook_url) {
+        let channels: string[] = ['web', 'webhook', 'email'];
+        try {
+          if (r.notify_channels) {
+            channels = typeof r.notify_channels === 'string' ? JSON.parse(r.notify_channels) : r.notify_channels;
+          }
+        } catch {}
+
+        // 1. Webhook Notification
+        if (event.webhook_url && (channels.includes('webhook') || channels.includes('web'))) {
           let title = '';
           if (calc.daysRemaining === 0) {
             title = `🎉【今天】${event.title}`;
@@ -75,6 +92,32 @@ export async function checkAndDispatchReminders() {
 
           console.log(`[Cron] Dispatching webhook to ${event.username} for event: ${event.title}`);
           await sendWebhookNotification(event.webhook_url, event.webhook_type || 'generic', title, content);
+        }
+
+        // 2. Email Notification
+        const isEmailChannel = channels.includes('email') || Boolean(event.email_enabled);
+        if (isEmailChannel && event.email_recipient && event.smtp_host && event.smtp_user && event.smtp_pass) {
+          console.log(`[Cron] Dispatching email to ${event.email_recipient} for event: ${event.title}`);
+          await EmailService.sendAnniversaryEmail({
+            smtpConfig: {
+              smtp_host: event.smtp_host,
+              smtp_port: Number(event.smtp_port) || 465,
+              smtp_user: event.smtp_user,
+              smtp_pass: event.smtp_pass,
+              smtp_from: event.smtp_from,
+              smtp_secure: Boolean(event.smtp_secure ?? true)
+            },
+            to: event.email_recipient,
+            event: {
+              title: event.title,
+              target_date: event.target_date,
+              calendar_type: event.calendar_type,
+              repeat_type: event.repeat_type,
+              repeat_interval: event.repeat_interval,
+              notes: event.notes
+            },
+            calculation: calc
+          });
         }
       }
     }

@@ -93,6 +93,27 @@
   --shadow-hover: 0 12px 40px rgba(168, 93, 111, 0.12);
 }
 
+[data-theme="cute-pink"] {
+  /* 4. 可爱粉（软萌甜心） */
+  --primary: #FF6B8B;
+  --primary-deep: #E64C6E;
+  --primary-light: #FFF0F4;
+  --gold: #FFA8BA;
+  --gold-light: #FFF5F8;
+  --gold-deep: #E05877;
+
+  --text-primary: #3B2026;
+  --text-secondary: #7F4D58;
+  --text-tertiary: #B5848F;
+  --border-light: #FCE4EC;
+  --bg-page: #FFF5F8;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #FFEBF1;
+
+  --shadow-card: 0 8px 32px rgba(255, 107, 139, 0.09);
+  --shadow-hover: 0 12px 40px rgba(255, 107, 139, 0.16);
+}
+
 [data-theme="summer-forest"] {
   /* 4. 竹影青翠（松柏青竹） */
   --primary: #3D6B58;

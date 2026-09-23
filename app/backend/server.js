@@ -133,6 +133,7 @@ app.delete('/api/categories/:id', categoryController_1.categoryController.delete
 app.get('/api/settings', settingController_1.settingController.getSettings);
 app.put('/api/settings', settingController_1.settingController.updateSettings);
 app.post('/api/settings/test-webhook', settingController_1.settingController.testWebhook);
+app.post('/api/settings/test-email', settingController_1.settingController.testEmail);
 // Data Export & Import (JSON)
 app.get('/api/data/export', dataController_1.dataController.exportData);
 app.post('/api/data/import', dataController_1.dataController.importData);

@@ -10,7 +10,11 @@ import {
   Download,
   Upload,
   FileJson,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Eye,
+  EyeOff,
+  Info
 } from 'lucide-react';
 import { User, Category, AppThemeType, APP_THEMES } from '../types';
 import { apiClient } from '../api/client';
@@ -38,13 +42,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentTheme = 'autumn-gold',
   onSelectTheme
 }) => {
-  const [activeTab, setActiveTab] = useState<'theme' | 'webhook' | 'category' | 'data' | 'profile'>('theme');
+  const [activeTab, setActiveTab] = useState<'theme' | 'webhook' | 'email' | 'category' | 'data' | 'profile'>('theme');
 
   // Webhook form
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookType, setWebhookType] = useState('generic');
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [testResult, setTestResult] = useState<{ success?: boolean; message?: string } | null>(null);
+
+  // Email / SMTP form
+  const [smtpPreset, setSmtpPreset] = useState('custom');
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState(465);
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpFrom, setSmtpFrom] = useState('');
+  const [smtpSecure, setSmtpSecure] = useState(true);
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [emailTestResult, setEmailTestResult] = useState<{ success?: boolean; message?: string } | null>(null);
+  const [emailSaveResult, setEmailSaveResult] = useState<{ success?: boolean; message?: string } | null>(null);
 
   // New Category form
   const [newCatName, setNewCatName] = useState('');
@@ -64,8 +83,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     apiClient.getSettings().then(res => {
       setWebhookUrl(res.webhook_url || '');
       setWebhookType(res.webhook_type || 'generic');
+      setSmtpHost(res.smtp_host || '');
+      setSmtpPort(res.smtp_port || 465);
+      setSmtpUser(res.smtp_user || '');
+      setSmtpPass(res.smtp_pass || '');
+      setSmtpFrom(res.smtp_from || '');
+      setSmtpSecure(res.smtp_secure !== undefined ? Boolean(res.smtp_secure) : true);
+      setEmailRecipient(res.email_recipient || '');
+      setEmailEnabled(Boolean(res.email_enabled));
+
+      // Infer preset if host matches
+      if (res.smtp_host?.includes('qq.com')) setSmtpPreset('qq');
+      else if (res.smtp_host?.includes('163.com')) setSmtpPreset('163');
+      else if (res.smtp_host?.includes('126.com')) setSmtpPreset('126');
+      else if (res.smtp_host?.includes('office365') || res.smtp_host?.includes('outlook')) setSmtpPreset('outlook');
+      else if (res.smtp_host?.includes('gmail.com')) setSmtpPreset('gmail');
+      else if (res.smtp_host?.includes('139.com')) setSmtpPreset('139');
+      else setSmtpPreset('custom');
     });
     setTestResult(null);
+    setEmailTestResult(null);
+    setEmailSaveResult(null);
     setDataMessage(null);
     setSelectedFile(null);
     setParsedData(null);
@@ -100,6 +138,84 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTestResult({ success: false, message: err.response?.data?.message || err.message || '测试失败' });
     } finally {
       setTestingWebhook(false);
+    }
+  };
+
+  const handlePresetChange = (preset: string) => {
+    setSmtpPreset(preset);
+    if (preset === 'qq') {
+      setSmtpHost('smtp.qq.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+    } else if (preset === '163') {
+      setSmtpHost('smtp.163.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+    } else if (preset === '126') {
+      setSmtpHost('smtp.126.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+    } else if (preset === 'outlook') {
+      setSmtpHost('smtp.office365.com');
+      setSmtpPort(587);
+      setSmtpSecure(false);
+    } else if (preset === 'gmail') {
+      setSmtpHost('smtp.gmail.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+    } else if (preset === '139') {
+      setSmtpHost('smtp.139.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+    }
+  };
+
+  const handleSaveEmailSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiClient.updateSettings({
+        smtp_host: smtpHost.trim(),
+        smtp_port: Number(smtpPort) || 465,
+        smtp_user: smtpUser.trim(),
+        smtp_pass: smtpPass,
+        smtp_from: smtpFrom.trim(),
+        smtp_secure: smtpSecure,
+        email_recipient: emailRecipient.trim(),
+        email_enabled: emailEnabled
+      });
+      setEmailSaveResult({ success: true, message: '邮件与发信服务设置已成功保存！' });
+    } catch (err: any) {
+      setEmailSaveResult({ success: false, message: err.response?.data?.message || err.message || '保存失败' });
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!smtpHost || !smtpUser) {
+      setEmailTestResult({ success: false, message: '请先填写 SMTP 主机与发信账号' });
+      return;
+    }
+    if (!emailRecipient) {
+      setEmailTestResult({ success: false, message: '请填写收件人邮箱地址' });
+      return;
+    }
+
+    setTestingEmail(true);
+    setEmailTestResult(null);
+    try {
+      const res = await apiClient.testEmail({
+        smtp_host: smtpHost.trim(),
+        smtp_port: Number(smtpPort) || 465,
+        smtp_user: smtpUser.trim(),
+        smtp_pass: smtpPass,
+        smtp_from: smtpFrom.trim(),
+        smtp_secure: smtpSecure,
+        email_recipient: emailRecipient.trim()
+      });
+      setEmailTestResult({ success: true, message: res.message || '测试邮件发送成功，请查收！' });
+    } catch (err: any) {
+      setEmailTestResult({ success: false, message: err.response?.data?.message || err.message || '发送失败，请检查 SMTP 配置' });
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -288,10 +404,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             {[
               { key: 'theme', label: '🎨 主题外观' },
-              { key: 'webhook', label: '消息推送' },
-              { key: 'category', label: '分类管理' },
-              { key: 'data', label: '数据导入导出' },
-              { key: 'profile', label: '当前用户' }
+              { key: 'webhook', label: '📢 消息推送' },
+              { key: 'email', label: '📧 邮件提醒' },
+              { key: 'category', label: '📂 分类管理' },
+              { key: 'data', label: '💾 数据导入导出' },
+              { key: 'profile', label: '👤 当前用户' }
             ].map(t => (
               <button
                 key={t.key}
@@ -300,6 +417,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   setActiveTab(t.key as any);
                   setDataMessage(null);
                   setTestResult(null);
+                  setEmailTestResult(null);
+                  setEmailSaveResult(null);
                 }}
                 style={{
                   padding: '6px 14px',
@@ -483,6 +602,314 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   style={{ height: '38px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
                 >
                   保存设置
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Tab 1.5: Email Notifications */}
+          {activeTab === 'email' && (
+            <form onSubmit={handleSaveEmailSettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                  配置发信 SMTP 服务与收件人，重要纪念日到达时将自动推送精美格式邮件。
+                </p>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={emailEnabled}
+                    onChange={(e) => setEmailEnabled(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                  />
+                  <span>启用邮件提醒</span>
+                </label>
+              </div>
+
+              {/* Service Presets */}
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                  常用邮箱服务快速配置
+                </label>
+                <select
+                  value={smtpPreset}
+                  onChange={(e) => handlePresetChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-light)',
+                    background: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: '14px',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="custom">⚙️ 自定义 SMTP 服务器</option>
+                  <option value="qq">🐧 QQ 邮箱 (smtp.qq.com · 端口 465 SSL)</option>
+                  <option value="163">📮 163 网易邮箱 (smtp.163.com · 端口 465 SSL)</option>
+                  <option value="126">📧 126 邮箱 (smtp.126.com · 端口 465 SSL)</option>
+                  <option value="outlook">💼 微软 Outlook / Office 365 (587 STARTTLS)</option>
+                  <option value="gmail">🌐 Google Gmail (465 SSL)</option>
+                  <option value="139">📱 139 移动邮箱 (smtp.139.com · 端口 465 SSL)</option>
+                </select>
+              </div>
+
+              {/* Preset Guidance Tip */}
+              {(smtpPreset === 'qq' || smtpPreset === '163' || smtpPreset === '126') && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--gold-light)',
+                  color: 'var(--gold-deep)',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '6px',
+                  lineHeight: 1.5
+                }}>
+                  <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    {smtpPreset === 'qq' && (
+                      <span><strong>QQ 邮箱授权指引：</strong>请登录 QQ 邮箱网页版，在「设置」-「账户」页面找到「POP3/IMAP/SMTP/Exchange 服务」，开启 SMTP 并点击生成 16 位<strong>授权码</strong>，在下方密码框填入该授权码（切勿填写 QQ 登录密码）。</span>
+                    )}
+                    {(smtpPreset === '163' || smtpPreset === '126') && (
+                      <span><strong>网易邮箱授权指引：</strong>请登录网页版邮箱，在「设置」-「POP3/SMTP/IMAP」页面开启 SMTP 服务并新增<strong>授权密码</strong>，在下方密码框填入授权密码。</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Grid 1: Host & Port */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                    SMTP 服务器主机
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="例如 smtp.qq.com"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                    端口
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="465"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(Number(e.target.value) || 465)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Grid 2: Account & Password */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                    发信邮箱账号
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="your_email@domain.com"
+                    value={smtpUser}
+                    onChange={(e) => setSmtpUser(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                    SMTP 授权码 / 密码
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showSmtpPass ? 'text' : 'password'}
+                      placeholder={smtpPass ? '••••••••' : '请输入授权码或应用密码'}
+                      value={smtpPass}
+                      onChange={(e) => setSmtpPass(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 38px 10px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-light)',
+                        background: 'var(--bg-subtle)',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpPass(!showSmtpPass)}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-tertiary)',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {showSmtpPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid 3: From Name & Recipient Email */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                    发件人显示昵称 (选填)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="例如 飞牛纪念日提醒"
+                    value={smtpFrom}
+                    onChange={(e) => setSmtpFrom(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                    默认接收提醒邮箱
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="target_email@domain.com"
+                    value={emailRecipient}
+                    onChange={(e) => setEmailRecipient(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* SSL/TLS Checkbox */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="smtpSecureCheckbox"
+                  checked={smtpSecure}
+                  onChange={(e) => setSmtpSecure(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                />
+                <label htmlFor="smtpSecureCheckbox" style={{ fontSize: '13px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                  使用 SSL/TLS 加密连接 (端口 465 通常勾选，端口 587 STARTTLS 通常不勾选)
+                </label>
+              </div>
+
+              {/* Feedback messages */}
+              {emailTestResult && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: emailTestResult.success ? 'var(--gold-light)' : '#FEF2F2',
+                  color: emailTestResult.success ? 'var(--gold-deep)' : '#C53030',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  {emailTestResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                  <span>{emailTestResult.message}</span>
+                </div>
+              )}
+
+              {emailSaveResult && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: emailSaveResult.success ? 'var(--gold-light)' : '#FEF2F2',
+                  color: emailSaveResult.success ? 'var(--gold-deep)' : '#C53030',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  {emailSaveResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                  <span>{emailSaveResult.message}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleTestEmail}
+                  disabled={testingEmail || !smtpHost || !smtpUser || !emailRecipient}
+                  className="btn-icon-box"
+                  style={{ 
+                    width: 'auto', 
+                    padding: '0 16px', 
+                    height: '38px', 
+                    borderRadius: 'var(--radius-md)', 
+                    fontSize: '13px', 
+                    fontWeight: 500, 
+                    opacity: (!smtpHost || !smtpUser || !emailRecipient || testingEmail) ? 0.6 : 1 
+                  }}
+                >
+                  <Mail size={14} style={{ marginRight: '4px' }} />
+                  {testingEmail ? '正在发送测试邮件...' : '测试邮件发送'}
+                </button>
+
+                <button
+                  type="submit"
+                  className="btn-primary-solid"
+                  style={{ height: '38px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+                >
+                  保存邮件设置
                 </button>
               </div>
             </form>

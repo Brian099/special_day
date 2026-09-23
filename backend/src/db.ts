@@ -161,6 +161,14 @@ export async function initDatabase() {
       default_calendar_type TEXT DEFAULT 'solar',
       webhook_url TEXT,
       webhook_type TEXT DEFAULT 'generic',
+      smtp_host TEXT,
+      smtp_port INTEGER DEFAULT 465,
+      smtp_user TEXT,
+      smtp_pass TEXT,
+      smtp_from TEXT,
+      smtp_secure INTEGER DEFAULT 1,
+      email_recipient TEXT,
+      email_enabled INTEGER DEFAULT 0,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -169,4 +177,24 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_id);
     CREATE INDEX IF NOT EXISTS idx_reminders_event ON reminders(event_id);
   `);
+
+  // Migrate user_settings columns if upgrading existing db
+  const columnsToAdd = [
+    { name: 'smtp_host', type: 'TEXT' },
+    { name: 'smtp_port', type: 'INTEGER DEFAULT 465' },
+    { name: 'smtp_user', type: 'TEXT' },
+    { name: 'smtp_pass', type: 'TEXT' },
+    { name: 'smtp_from', type: 'TEXT' },
+    { name: 'smtp_secure', type: 'INTEGER DEFAULT 1' },
+    { name: 'email_recipient', type: 'TEXT' },
+    { name: 'email_enabled', type: 'INTEGER DEFAULT 0' }
+  ];
+
+  for (const col of columnsToAdd) {
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN ${col.name} ${col.type};`);
+    } catch {
+      // Column already exists, ignore
+    }
+  }
 }
